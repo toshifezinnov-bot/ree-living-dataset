@@ -1,0 +1,38 @@
+name: REE Living Dataset Harvester
+
+on:
+  workflow_dispatch:  # Gives you a manual "Run workflow" button to test anytime
+  # We will uncomment the daily cron schedule in Step 4 once Step 3 PDF extraction is ready:
+  # schedule:
+  #   - cron: '0 2 * * *'
+
+jobs:
+  discover-and-triage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Download repo files into cloud VM
+        uses: actions/checkout@v4
+
+      - name: 2. Set up Python 3.12 with pip cache
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 3. Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: 4. Run Discovery & AI Triage
+        env:
+          OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/discover_and_triage.py
+
+      - name: 5. Save updated CSV & Ledger back to GitHub
+        run: |
+          git config user.name "REE Harvester Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "chore: add triaged REE leaching candidates"
+          git push
